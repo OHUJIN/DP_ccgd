@@ -1,0 +1,46 @@
+# 구글 코랩 실행시 사용가능
+# 구글 드라이브 마운트
+from google.colab import drive
+drive.mount('/content/drive')
+
+#-----------------------------------------------------------------------------------------------------------------------
+# 파일 경로 설정
+# 파일경로 수정 필요
+file_path = '/content/drive/MyDrive/1-2.데이터 분석팀_오우진/19.해영케미칼_계약해지_동판정리_물류/10.파이썬 코드/241111.xlsx'
+
+# 엑셀 파일 읽기
+df = pd.read_excel(file_path)
+
+#-----------------------------------------------------------------------------------------------------------------------
+import pandas as pd
+
+# 주문일자 추출 및 변환
+df['주문일자'] = df['주문번호'].str.extract(r'(\d{8})').astype(int)
+
+# 각 제품코드별로 가장 최근 주문일자를 찾기
+latest_order_dates = df.groupby('제품코드')['주문일자'].max().reset_index()
+
+# 원본 데이터프레임과 가장 최근 주문일자를 기준으로 병합하여, 최근 주문일자의 주문번호에 해당하는 모든 행을 남기기
+# 최근 주문별로 동판코드까지 남기기 위함
+latest_orders_df = df.merge(latest_order_dates, on=['제품코드', '주문일자'], how='inner')
+
+# 조건에 맞는 데이터 필터링
+# 최근인쇄협력사가 있고, 동판구분명이 공용판이 아니고, 동판코드가 "D"로 시작하지 않는 행만 남기기
+filtered_df = latest_orders_df[
+    (latest_orders_df['최근인쇄협력사'].notna()) & 
+    (latest_orders_df['동판구분명'] != '공용판') & 
+    (~latest_orders_df['동판코드'].astype(str).str.startswith('D'))
+]
+
+# 결과 확인
+filtered_df
+
+#-----------------------------------------------------------------------------------------------------------------------
+# 구글 코랩에서 진행시에 엑셀로 다운받을 수 있는 코
+# 필터링된 데이터를 새로운 엑셀 파일로 저장
+latest_orders_df_path = '/content/filtered_data.xlsx'
+filtered_df.to_excel(latest_orders_df_path, index=False)
+
+# 파일 다운로드 링크 생성
+from google.colab import files
+files.download(latest_orders_df_path)
